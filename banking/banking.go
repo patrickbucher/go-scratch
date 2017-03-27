@@ -1,19 +1,17 @@
-package main
+package banking
 
 import (
-    "fmt"
-    "math"
     "sync"
 )
 
-type account struct {
+type Account struct {
     owner string
     number int
     sync.Mutex
     balance int
 }
 
-func (acc *account) listen(transfers <-chan int, control chan<- bool) {
+func (acc *Account) listen(transfers <-chan int, control chan<- bool) {
     for amount := range transfers {
         acc.Lock()
         acc.balance += amount
@@ -23,8 +21,8 @@ func (acc *account) listen(transfers <-chan int, control chan<- bool) {
 }
 
 type transfer struct {
-    source *account
-    target *account
+    source *Account
+    target *Account
     amount int
 }
 
@@ -46,49 +44,29 @@ func (trans transfer) execute(status chan<- string) {
     }
 }
 
-func main() {
-    const ACCOUNTS = 10
-    const TRANSFERS = ACCOUNTS * 2
-    const AMOUNT = 100
-    const BALANCE = 1000
-
-    fooBalance := 0
-    barBalance := 0
-    foo := [ACCOUNTS]*account{}
-    bar := [ACCOUNTS]*account{}
-    for i := 0; i < ACCOUNTS; i++ {
-        foo[i] = &account{owner: "foo", number: i, balance: BALANCE}
-        bar[i] = &account{owner: "bar", number: i, balance: BALANCE}
-        fooBalance += foo[i].balance
-        barBalance += bar[i].balance
+func ExecuteTransfers(source, target []*Account, amount int) {
+    if len(source) != len(target) {
+        panic("different number of source and target accounts")
     }
+    accounts := len(source)
 
-    fooToBar := [ACCOUNTS]*transfer{}
-    barToFoo := [ACCOUNTS]*transfer{}
-    for i := 0; i < ACCOUNTS; i++ {
-        fooToBar[i] = &transfer{source: foo[i], target: bar[i], amount: AMOUNT}
-        barToFoo[i] = &transfer{source: bar[i], target: foo[i], amount: AMOUNT}
+    fwdTrans := make([]*transfer, accounts)
+    bckTrans := make([]*transfer, accounts)
+    for i := 0; i < accounts; i++ {
+        fwdTrans[i] = &transfer{source: source[i], target: target[i],
+            amount: amount}
+        bckTrans[i] = &transfer{source: target[i], target: source[i],
+            amount: amount}
     }
 
     status := make(chan string)
-    for i := 0; i < ACCOUNTS; i++ {
-        go fooToBar[i].execute(status)
-        go barToFoo[i].execute(status)
+    for i := 0; i < accounts; i++ {
+        go fwdTrans[i].execute(status)
+        go bckTrans[i].execute(status)
     }
 
-    for i := 0; i < TRANSFERS; i++ {
-        fmt.Printf("%d. %s\n", i + 1, <-status)
+    for i := 0; i < accounts * 2; i++ {
+        <-status
     }
     close(status)
-
-    for i := 0; i < ACCOUNTS; i++ {
-        fooBalance -= foo[i].balance
-        barBalance -= bar[i].balance
-    }
-    if (fooBalance != 0 || barBalance != 0) {
-        difference := math.Abs(float64(fooBalance)) + math.Abs(float64(barBalance))
-        fmt.Println("Error: difference detected: ", difference)
-    } else {
-        fmt.Println("Success: no difference detected")
-    }
 }
