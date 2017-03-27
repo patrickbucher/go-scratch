@@ -28,9 +28,9 @@ func TestExecuteTransfers(t *testing.T) {
         barBalance -= bar[i].balance
     }
 
-    difference := math.Abs(float64(fooBalance)) + math.Abs(float64(barBalance))
-    if difference != 0 {
-        t.Errorf("detected difference of %f", difference)
+    diff := math.Abs(float64(fooBalance)) + math.Abs(float64(barBalance))
+    if diff != 0 {
+        t.Errorf("detected difference of %f", diff)
     }
 }
 
