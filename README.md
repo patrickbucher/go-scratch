@@ -1,3 +1,3 @@
 # Go Scratch
 
-Code im producing while learning Go
+Code I'm producing while learning Go
