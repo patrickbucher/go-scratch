@@ -2,25 +2,24 @@ package main
 
 import "fmt"
 
-const CONSUMERS = 5
-const MESSAGES = 40
+const consumers = 5
+const messages = 40
 
-func consume(number int, channel <-chan string, drained chan<- bool) {
+func consume(number int, channel <-chan string, consumed chan<- bool) {
     for message := range channel {
         fmt.Printf("consumer %d consumes message \"%s\"\n", number, message)
     }
-    drained<- true
+    consumed<- true
 }
 
 func main() {
     queue := make(chan string)
     control := make(chan bool)
-    for i := 0; i < CONSUMERS; i++ {
+    for i := 0; i < consumers; i++ {
         go consume(i + 1, queue, control)
     }
-    for i := 0; i < MESSAGES / 2; i++ {
+    for i := 0; i < messages; i++ {
         queue<- fmt.Sprintf("hello %2d", i + 1)
-        queue<- fmt.Sprintf("goodbye %2d", i + 1)
     }
     close(queue)
     <-control
