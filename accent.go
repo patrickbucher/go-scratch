@@ -9,15 +9,14 @@ import (
 )
 
 func getAccentFromArgs() rune {
-    if len(os.Args) < 2 {
-        panic("usage: accent [pseudo accent sign]")
-    }
-    param := os.Args[1]
-    paramRunes := []rune(param)
-    if len(paramRunes) > 1 {
-        panic("you must only one character as pseudo accent sign")
-    }
+    if len(os.Args) >= 2 {
+        param := os.Args[1]
+        paramRunes := []rune(param)
     return paramRunes[0]
+    } else {
+        // default accent
+        return '*'
+    }
 }
 
 func main() {
