@@ -40,11 +40,11 @@ func main() {
 		fmt.Fprintf(os.Stderr, "error creating dir %s: %v\n", dir, err)
 		os.Exit(1)
 	}
-	for k, _ := range ids {
-		artUrl := url + "/" + k
-		artContent, err := getPageContent(artUrl)
+	for k := range ids {
+		artURL := url + "/" + k
+		artContent, err := getPageContent(artURL)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "error downloading %s: %v\n", artUrl, err)
+			fmt.Fprintf(os.Stderr, "error downloading %s: %v\n", artURL, err)
 		}
 		artFile := strings.Replace(k, ";", "", 1)
 		artFile = strings.Replace(artFile, ",", "-", 1)
@@ -56,6 +56,7 @@ func main() {
 		}
 		f.WriteString(artContent)
 		f.Sync()
+		// TODO: f.Close() needed?
 	}
 }
 
