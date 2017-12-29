@@ -29,6 +29,7 @@ func main() {
 		} else {
 			if match > 0 {
 				fmt.Print(string(pattern[:match]))
+				match = 0
 			}
 			fmt.Print(string(char))
 		}
