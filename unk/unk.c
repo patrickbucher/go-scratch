@@ -1,30 +1,34 @@
 #include <stdio.h>
 #include <string.h>
 
+#define PAT_LEN 5
+
 int main()
 {
-    char c;
     char pattern[] = "<unk>";
     char replacement[] = "<raw_unk>"; 
-    char buf[5]; // length of "<unk>"
-    int i, j, pat_len;
+    int c;
+    int i, j;
 
-    pat_len = strlen(pattern);
     for (i = 0; (c = getchar()) != EOF;) {
         if (c == pattern[i]) {
-            buf[i++] = c;
-            if (i == pat_len) {
+            i++;
+            if (i == PAT_LEN) {
                 printf("%s", replacement);
                 i = 0;
             }
         } else {
             if (i > 0) {
                 for (j = 0; j < i; j++) {
-                    putchar(buf[j]);
+                    putchar(pattern[j]);
                 }
                 i = 0;
             }
-            putchar(c);
+            if (c == pattern[0]) {
+                i = 1;
+            } else {
+                putchar(c);
+            }
         }
     }
 
