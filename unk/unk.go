@@ -31,7 +31,11 @@ func main() {
 				fmt.Print(string(pattern[:match]))
 				match = 0
 			}
-			fmt.Print(string(char))
+			if char == rune(pattern[0]) {
+				match = 1
+			} else {
+				fmt.Print(string(char))
+			}
 		}
 	}
 	if err := scanner.Err(); err != nil {
