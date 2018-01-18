@@ -2,8 +2,9 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -17,10 +18,13 @@ func main() {
 		log.Fatalf("usage: %s [url]", os.Args[0])
 	}
 	url := os.Args[1]
-	content, err := getPageContent(url)
+	buf := bytes.NewBufferString("")
+	reader, err := getPageContent(url)
 	if err != nil {
 		log.Fatalf("error fetching for url %v: %v", url, err)
 	}
+	buf.ReadFrom(reader)
+	content := buf.String()
 	now := time.Now()
 	subdir := now.Format("2006-01-02_15.04.05")
 	dir := strings.Join([]string{"dump", subdir}, string(os.PathSeparator))
@@ -43,21 +47,21 @@ func main() {
 		go downloadArticle(artURL, artFilePath, ch)
 		n++
 	}
-	var good, bad int
+	var succeeded, failed int
 	for i := 0; i < n; i++ {
 		success := <-ch
 		if success {
-			good++
+			succeeded++
 		} else {
-			bad++
+			failed++
 		}
 	}
-	fmt.Printf("downloaded: %d, failed: %d\n", good, bad)
+	fmt.Printf("downloaded: %d, failed: %d\n", succeeded, failed)
 }
 
 func downloadArticle(url, path string, done chan bool) {
 	start := time.Now()
-	artContent, err := getPageContent(url)
+	reader, err := getPageContent(url)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error downloading %s: %v\n", url, err)
 	}
@@ -66,25 +70,19 @@ func downloadArticle(url, path string, done chan bool) {
 		fmt.Fprintf(os.Stderr, "error opening %s: %v\n", path, err)
 		done <- false
 	}
-	f.WriteString(artContent)
-	f.Sync()
 	defer f.Close()
+	io.Copy(f, reader)
 	elapsed := time.Since(start)
 	fmt.Printf("downloaded '%s' to '%s' in %v\n", url, path, elapsed)
 	done <- true
 }
 
-func getPageContent(url string) (string, error) {
+func getPageContent(url string) (io.Reader, error) {
 	resp, err := http.Get(url)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	body, err := ioutil.ReadAll(resp.Body)
-	resp.Body.Close()
-	if err != nil {
-		return "", err
-	}
-	return string(body), nil
+	return resp.Body, nil
 }
 
 func extractArticleIds(content string) []string {
@@ -102,7 +100,7 @@ func extractArticleIds(content string) []string {
 		}
 	}
 	uniqueIds := make([]string, len(ids))
-	for k, _ := range ids {
+	for k := range ids {
 		uniqueIds = append(uniqueIds, k)
 	}
 	return uniqueIds
