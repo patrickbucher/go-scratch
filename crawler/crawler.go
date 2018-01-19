@@ -3,6 +3,7 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -83,6 +84,10 @@ func getPageContent(url string) (io.ReadCloser, error) {
 	resp, err := http.Get(url)
 	if err != nil {
 		return nil, err
+	}
+	if resp.StatusCode != http.StatusOK {
+		msg := fmt.Sprintf("error GET %s, cause: %s", url, resp.Status)
+		return nil, errors.New(msg)
 	}
 	return resp.Body, nil
 }
