@@ -23,6 +23,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("error fetching for url %v: %v", url, err)
 	}
+	defer reader.Close()
 	buf.ReadFrom(reader)
 	content := buf.String()
 	now := time.Now()
@@ -65,6 +66,7 @@ func downloadArticle(url, path string, done chan bool) {
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error downloading %s: %v\n", url, err)
 	}
+	defer reader.Close()
 	f, err := os.Create(path)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error opening %s: %v\n", path, err)
@@ -77,7 +79,7 @@ func downloadArticle(url, path string, done chan bool) {
 	done <- true
 }
 
-func getPageContent(url string) (io.Reader, error) {
+func getPageContent(url string) (io.ReadCloser, error) {
 	resp, err := http.Get(url)
 	if err != nil {
 		return nil, err
