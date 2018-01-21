@@ -58,6 +58,7 @@ func main() {
 			failed++
 		}
 	}
+	close(ch)
 	fmt.Printf("downloaded: %d, failed: %d\n", succeeded, failed)
 }
 
