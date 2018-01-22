@@ -3,7 +3,6 @@ package main
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -82,13 +81,18 @@ func downloadArticle(url, path string, done chan bool) {
 }
 
 func getPageContent(url string) (io.ReadCloser, error) {
-	resp, err := http.Get(url)
+	client := &http.Client{}
+	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error creating GET request to %s: %v", url, err)
+	}
+	req.Header.Set("User-Agent", "Googlebot-News")
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("GET request %v caused error: %v", req, err)
 	}
 	if resp.StatusCode != http.StatusOK {
-		msg := fmt.Sprintf("error GET %s, cause: %s", url, resp.Status)
-		return nil, errors.New(msg)
+		return nil, fmt.Errorf("GET request %v failed: %s", url, resp.Status)
 	}
 	return resp.Body, nil
 }
