@@ -21,6 +21,9 @@ func main() {
 	}
 }
 
+// TODO: get a channel to write links to, count pages processed, open a channel
+// for every page, read from every page's channel until drained, forward
+// directly to the channel handed into the function
 func collectArticleLinks() []string {
 	var links []string
 	var statusCode int
@@ -48,6 +51,11 @@ func collectArticleLinks() []string {
 	return links
 }
 
+// TODO: split up in two functions to enable parallelism
+// 1) crawlPage: gets a channel to write links to, closes channel after document
+// is processed
+// 2) crawlNode: gets a channel to write one single link to, leaves the channel
+// open
 func crawlForHrefs(n *html.Node, class string) []string {
 	var hrefs []string
 	if n.Type == html.ElementNode {
