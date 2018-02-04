@@ -12,45 +12,57 @@ import (
 const (
 	nthPage       = "https://bonnerandpartners.com/category/dre/page/%d/"
 	readLinkClass = "w-blog-post-more"
+	maxPage       = 244 // TODO: determine by fetching the first page
 )
 
 func main() {
 	links := make(chan string)
-	go collectArticleLinks(links)
+	go collectArticleLinks(links, maxPage)
 	for link := range links {
 		fmt.Println(link)
 	}
 }
 
-func collectArticleLinks(links chan<- string) {
-	var statusCode, page int
+func collectArticleLinks(links chan<- string, maxPage int) {
+	var nPages, nDocs int
 	pageDone := make(chan bool)
-	for page = 1; statusCode != 404; page++ {
-		url := fmt.Sprintf(nthPage, page)
-		// TODO: This part still works synchronously. Retrieve documents in a
-		// fire-and-forget manner by sending the resulting DocumentNode through
-		// a channel.
-		resp, err := http.Get(url)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Get %s failed: %v", url, err)
-		}
-		defer resp.Body.Close()
-		if statusCode = resp.StatusCode; statusCode != http.StatusOK {
-			fmt.Fprintf(os.Stderr, "Get %s failed: %s", url, resp.Status)
-			continue
-		}
-		doc, err := html.Parse(resp.Body)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "parsing %s: %v", url, err)
-			continue
-		}
-		go crawlForHrefs(doc, readLinkClass, links, pageDone)
+	documents := make(chan *html.Node)
+	for nPages = 0; nPages < maxPage; nPages++ {
+		url := fmt.Sprintf(nthPage, nPages)
+		go fetchPage(url, documents)
 	}
-	for i := 0; i < page; i++ {
+	for nDocs < nPages {
+		if doc := <-documents; doc != nil {
+			go crawlForHrefs(doc, readLinkClass, links, pageDone)
+			nDocs++
+		}
+	}
+	close(documents)
+	for i := 0; i < nDocs; i++ {
 		<-pageDone
 	}
 	close(pageDone)
 	close(links)
+}
+
+func fetchPage(url string, document chan<- *html.Node) {
+	var statusCode int
+	resp, err := http.Get(url)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Get %s failed: %v", url, err)
+		document <- nil
+	}
+	defer resp.Body.Close()
+	if statusCode = resp.StatusCode; statusCode != http.StatusOK {
+		fmt.Fprintf(os.Stderr, "Get %s failed: %s", url, resp.Status)
+		document <- nil
+	}
+	doc, err := html.Parse(resp.Body)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "parsing %s: %v", url, err)
+		document <- nil
+	}
+	document <- doc
 }
 
 func crawlForHrefs(n *html.Node, class string, links chan<- string, done chan<- bool) {
