@@ -15,20 +15,21 @@ const (
 )
 
 func main() {
-	links := collectArticleLinks()
-	for _, v := range links {
-		fmt.Println(v)
+	links := make(chan string)
+	go collectArticleLinks(links)
+	for link := range links {
+		fmt.Println(link)
 	}
 }
 
-// TODO: get a channel to write links to, count pages processed, open a channel
-// for every page, read from every page's channel until drained, forward
-// directly to the channel handed into the function
-func collectArticleLinks() []string {
-	var links []string
-	var statusCode int
-	for page := 1; statusCode != 404; page++ {
+func collectArticleLinks(links chan<- string) {
+	var statusCode, page int
+	pageDone := make(chan bool)
+	for page = 1; statusCode != 404; page++ {
 		url := fmt.Sprintf(nthPage, page)
+		// TODO: This part still works synchronously. Retrieve documents in a
+		// fire-and-forget manner by sending the resulting DocumentNode through
+		// a channel.
 		resp, err := http.Get(url)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Get %s failed: %v", url, err)
@@ -43,21 +44,16 @@ func collectArticleLinks() []string {
 			fmt.Fprintf(os.Stderr, "parsing %s: %v", url, err)
 			continue
 		}
-		hrefs := crawlForHrefs(doc, readLinkClass)
-		for _, v := range hrefs {
-			links = append(links, v)
-		}
+		go crawlForHrefs(doc, readLinkClass, links, pageDone)
 	}
-	return links
+	for i := 0; i < page; i++ {
+		<-pageDone
+	}
+	close(pageDone)
+	close(links)
 }
 
-// TODO: split up in two functions to enable parallelism
-// 1) crawlPage: gets a channel to write links to, closes channel after document
-// is processed
-// 2) crawlNode: gets a channel to write one single link to, leaves the channel
-// open
-func crawlForHrefs(n *html.Node, class string) []string {
-	var hrefs []string
+func crawlForHrefs(n *html.Node, class string, links chan<- string, done chan<- bool) {
 	if n.Type == html.ElementNode {
 		href := ""
 		found := false
@@ -69,14 +65,13 @@ func crawlForHrefs(n *html.Node, class string) []string {
 			}
 		}
 		if found {
-			hrefs = append(hrefs, href)
-			fmt.Println(href)
+			links <- href
 		}
 	}
 	for c := n.FirstChild; c != nil; c = c.NextSibling {
-		for _, v := range crawlForHrefs(c, class) {
-			hrefs = append(hrefs, v)
-		}
+		go crawlForHrefs(c, class, links, done)
 	}
-	return hrefs
+	if n.Type == html.DocumentNode {
+		done <- true
+	}
 }
