@@ -4,22 +4,73 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 
 	"golang.org/x/net/html"
 )
 
 const (
-	nthPage       = "https://bonnerandpartners.com/category/dre/page/%d/"
-	readLinkClass = "w-blog-post-more"
-	maxPage       = 244 // TODO: determine by fetching the first page
+	indexPage       = "https://bonnerandpartners.com/category/dre/"
+	nthPage         = "https://bonnerandpartners.com/category/dre/page/%d/"
+	readLinkClass   = "w-blog-post-more"
+	pageNumberClass = "page-numbers"
 )
 
 func main() {
+	maxPage, err := determineMaxPage()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "determine page: %v\n", err)
+		os.Exit(1)
+	}
 	links := make(chan string)
 	go collectArticleLinks(links, maxPage)
 	for link := range links {
 		fmt.Println(link)
+	}
+}
+
+func determineMaxPage() (int, error) {
+	resp, err := http.Get(indexPage)
+	if err != nil {
+		return 0, fmt.Errorf("get page %s: %v\n", indexPage, err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return 0, fmt.Errorf("get page %s: %s", indexPage, resp.Status)
+	}
+	doc, err := html.Parse(resp.Body)
+	if err != nil {
+		return 0, fmt.Errorf("parsing document: %v\n", err)
+	}
+	spans := make([]*html.Node, 0)
+	var max int
+	crawlForFirstChild(doc, "a", pageNumberClass, &spans)
+	if len(spans) > 0 {
+		for _, span := range spans {
+			if span.FirstChild != nil && span.FirstChild.Type == html.TextNode {
+				if n, err := strconv.Atoi(span.FirstChild.Data); err == nil {
+					if n > max {
+						max = n
+					}
+				}
+			}
+		}
+		return max, nil
+	}
+	return 0, fmt.Errorf("can't determine max page number")
+}
+
+func crawlForFirstChild(n *html.Node, element, class string, children *[]*html.Node) {
+	if n.Type == html.ElementNode && n.Data == element {
+		for _, attr := range n.Attr {
+			if attr.Key == "class" && attr.Val == class {
+				*children = append(*children, n.FirstChild)
+			}
+		}
+	}
+	for c := n.FirstChild; c != nil; c = c.NextSibling {
+		crawlForFirstChild(c, element, class, children)
 	}
 }
 
