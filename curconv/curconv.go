@@ -36,6 +36,19 @@ func processArgs() (amount float64, from, to string) {
 	return amount, strings.ToUpper(from), strings.ToUpper(to)
 }
 
+func outputResult(fromCur, toCur string, fromVal, toVal float64) {
+	fromLen := len(fmt.Sprintf("%.2f", fromVal))
+	toLen := len(fmt.Sprintf("%.2f", toVal))
+	var len int
+	if fromLen > toLen {
+		len = fromLen
+	} else {
+		len = toLen
+	}
+	format := "%s %" + strconv.Itoa(len) + ".2f\n"
+	fmt.Printf(format+format, fromCur, fromVal, toCur, toVal)
+}
+
 func main() {
 	amount, from, to := processArgs()
 	url := fmt.Sprintf(api, from)
@@ -59,7 +72,7 @@ func main() {
 	}
 	if rate, ok := result.Rates[to]; ok {
 		result := amount * rate
-		fmt.Printf("%s %10.2f\n%s %10.2f\n", from, amount, to, result)
+		outputResult(from, to, amount, result)
 	} else {
 		fmt.Fprintf(os.Stderr, "currency '%s' not in result\n", to)
 		os.Exit(1)
