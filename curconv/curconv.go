@@ -18,7 +18,7 @@ type apiResponse struct {
 }
 
 func processArgs() (amount float64, from, to string) {
-	if len(os.Args) < 4 {
+	if len(os.Args) != 4 {
 		fmt.Fprintf(os.Stderr, "usage: %s [amount] [from] [to]\n", os.Args[0])
 		fmt.Fprintf(os.Stderr, "example: %s 100 EUR USD\n", os.Args[0])
 		os.Exit(1)
@@ -30,7 +30,7 @@ func processArgs() (amount float64, from, to string) {
 	}
 	from, to = os.Args[2], os.Args[3]
 	if len(from) != 3 || len(to) != 3 {
-		fmt.Fprintf(os.Stderr, "currency codes must be three characters long")
+		fmt.Fprintf(os.Stderr, "currency codes must be three characters long\n")
 		os.Exit(1)
 	}
 	return amount, strings.ToUpper(from), strings.ToUpper(to)
