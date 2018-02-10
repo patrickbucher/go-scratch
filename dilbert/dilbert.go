@@ -61,8 +61,12 @@ func extractImages(n *html.Node, class string) []string {
 		var imgURL string
 		var add bool
 		for _, attr := range n.Attr {
-			if attr.Key == "class" && strings.Contains(attr.Val, class) {
-				add = true
+			if attr.Key == "class" {
+				for _, v := range strings.Fields(attr.Val) {
+					if v == class {
+						add = true
+					}
+				}
 			} else if attr.Key == "src" {
 				imgURL = attr.Val
 			}
